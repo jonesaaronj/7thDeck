@@ -1,5 +1,25 @@
 #!/bin/bash
 
+getSteamBase() {
+  if [ -d "${HOME}/.var/app/com.valvesoftware.Steam" ]; then
+    echo "${HOME}/.var/app/com.valvesoftware.Steam/.local/share"
+  else
+    echo "${HOME}/.steam/root"
+  fi
+}
+
+getSteamRoot() {
+  echo "$(getSteamBase)/Steam"
+}
+
+launchSteam() {
+  if [ -d "${HOME}/.var/app/com.valvesoftware.Steam" ]; then
+    echo "flatpak run com.valvesoftware.Steam"
+  else
+    echo "steam"
+  fi
+}
+
 # Locate SteamLibrary containing app_id
 getSteamLibrary() {
   local app_id="$1"
@@ -22,7 +42,7 @@ getSteamLibrary() {
           }
         }
       }
-    ' "${HOME}/.steam/root/steamapps/libraryfolders.vdf"
+    ' "$(getSteamRoot)/steamapps/libraryfolders.vdf"
   )
 
   echo "$path"
@@ -35,11 +55,12 @@ downloadDependency() {
   local FILTER=$2
   local RETURN_VARIABLE=$3
   local RELEASE_URL=$(
-    curl -s https://api.github.com/repos/"$REPO"/releases/latest  \
-    | grep "browser_download_url.$FILTER" \
-    | head -1 \
-    | cut -d : -f 2,3 \
-    | tr -d \")
+    curl -s https://api.github.com/repos/"$REPO"/releases/latest |
+      grep "browser_download_url.$FILTER" |
+      head -1 |
+      cut -d : -f 2,3 |
+      tr -d \"
+  )
   local FILENAME="${XDG_CACHE_HOME}/$(basename "$RELEASE_URL")"
   if [ -f "$FILENAME" ]; then
     echo "$FILENAME is ready to be installed."
@@ -54,37 +75,46 @@ downloadDependency() {
 promptUser() {
   local message="$1"
 
-  if command -v kdialog &> /dev/null; then
-    kdialog --msgbox "$message" &> /dev/null
-  elif command -v zenity &> /dev/null; then
-    zenity --info --text="$message" &> /dev/null
-  elif command -v dialog &> /dev/null; then
+  if command -v kdialog &>/dev/null; then
+    kdialog --msgbox "$message" &>/dev/null
+  elif command -v zenity &>/dev/null; then
+    zenity --info --text="$message" &>/dev/null
+  elif command -v dialog &>/dev/null; then
     dialog --msgbox "$message" 10 60
+  else
+    echo "Error: must install dialog, kdialog, or zenity"
+    exit 1
   fi
 }
 
 promptYesNo() {
   local message="$1"
 
-  if command -v kdialog &> /dev/null; then
-    kdialog --yesno "$message" &> /dev/null
-  elif command -v zenity &> /dev/null; then
-    zenity --question --text="$message" &> /dev/null
-  elif command -v dialog &> /dev/null; then
+  if command -v kdialog &>/dev/null; then
+    kdialog --yesno "$message" &>/dev/null
+  elif command -v zenity &>/dev/null; then
+    zenity --question --text="$message" &>/dev/null
+  elif command -v dialog &>/dev/null; then
     dialog --yesno "$message" 10 60
+  else
+    echo "Error: must install dialog, kdialog, or zenity"
+    exit 1
   fi
 }
 
 promptDirectory() {
   local title="$1"
 
-  if command -v kdialog &> /dev/null; then
+  if command -v kdialog &>/dev/null; then
     cd ${HOME}
     echo $(kdialog --getexistingdirectory)
-    cd - &> /dev/null
-  elif command -v zenity &> /dev/null; then
+    cd - &>/dev/null
+  elif command -v zenity &>/dev/null; then
     echo $(zenity --file-selection --directory)
-  elif command -v dialog &> /dev/null; then
+  elif command -v dialog &>/dev/null; then
     echo $(dialog --dselect "${HOME}" 10 60 --stdout)
+  else
+    echo "Error: must install dialog, kdialog, or zenity"
+    exit 1
   fi
 }
